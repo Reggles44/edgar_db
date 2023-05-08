@@ -1,2 +1,4 @@
 /resources/
 /venv/
+/.idea/
+.python-version
