@@ -1,10 +1,10 @@
-import json
 import os
-import traceback
+import json
+import requests
+import concurrent.futures
 from datetime import datetime
 from zipfile import ZipFile
 
-import requests
 
 __all__ = ['EDGAR', 'HEADERS']
 
@@ -27,10 +27,10 @@ class EDGAR:
         self._ticker_cik_map_path = os.path.join(self.path, 'ticker.json')
         self._ticker_cik_map = json.load(open(self._ticker_cik_map_path)) if os.path.isfile(self._ticker_cik_map_path) else {}
 
-        self._company_cik_map_path = os.path.join(self.path, 'ticker.json')
+        self._company_cik_map_path = os.path.join(self.path, 'company.json')
         self._company_cik_map = json.load(open(self._company_cik_map_path)) if os.path.isfile(self._company_cik_map_path) else {}
 
-    def build(self):
+    def build(self, n=8):
         now = datetime.now()
         summary_path = os.path.join(self.path, 'summary.json')
         company_zip = os.path.join(self.path, 'company_facts.zip')
@@ -43,18 +43,14 @@ class EDGAR:
         process_zip(COMPANY_FACTS_URL, company_zip, self._company_facts)
         process_zip(SUBMISSION_URL, submission_zip, self._submissions)
 
-        for file_name in os.listdir(self._submissions):
-            if '.json' in file_name:
-                with open(os.path.join(self.path, file_name), 'r') as file:
-                    try:
-                        submission = json.load(file)
-                        cik = submission['cik']
-                        cik = '0' * (10 - len(cik)) + cik
-
-                        self._company_cik_map[submission['name']] = cik
-                        self._ticker_cik_map.update({ticker: cik for ticker in submission['tickers']})
-                    except:
-                        traceback.print_exc()
+        file_names = [os.path.join(self._submissions, file_name) for file_name in os.listdir(self._submissions) if '.json' in file_name]
+        chunk_size = len(file_names) // n
+        with concurrent.futures.ProcessPoolExecutor(n) as pool:
+            futures = [pool.submit(gather_index, file_names[i:i + chunk_size]) for i in range(0, len(file_names), chunk_size)]
+            for future in concurrent.futures.as_completed(futures):
+                t, c = future.result()
+                self._ticker_cik_map.update(t)
+                self._company_cik_map.update(c)
 
         with open(self._ticker_cik_map_path, 'w+') as ticker_cik_file:
             ticker_cik_file.write(json.dumps(self._ticker_cik_map, indent=4))
@@ -67,12 +63,12 @@ class EDGAR:
                 'build_timestamp': now.isoformat(),
                 'total_size': sum(d.stat().st_size for d in os.scandir(self.path) if d.is_file()),
                 'company_facts': {
-                    'size': sum(d.stat().st_size for d in os.scandir(self._company_facts) if d.is_file()),
+                    # 'size': sum(d.stat().st_size for d in os.scandir(self._company_facts) if d.is_file()),
                     'files': len(os.listdir(self._company_facts)),
                     'zip_size': os.path.getsize(company_zip),
                 },
                 'submissions': {
-                    'size': sum(d.stat().st_size for d in os.scandir(self._submissions) if d.is_file()),
+                    # 'size': sum(d.stat().st_size for d in tqdm(os.scandir(self._submissions)) if d.is_file()),
                     'files': len(os.listdir(self._submissions)),
                     'zip_size': os.path.getsize(submission_zip),
                 }
@@ -87,12 +83,31 @@ class EDGAR:
 
 
 def process_zip(url, zip_path, folder_path):
-    with requests.get(url, headers=HEADERS, stream=True) as r:
-        r.raise_for_status()
+    with requests.get(url, headers=HEADERS, stream=True) as response:
+        response.raise_for_status()
         with open(zip_path, 'wb+') as file:
-            for chunk in r.iter_content():
+            for chunk in response.iter_content(chunk_size=8192):
                 file.write(chunk)
 
     if len(os.listdir(folder_path)) <= 0:
-        with ZipFile(zip_path, 'r') as file:
-            file.extractall(folder_path)
+        with ZipFile(zip_path, 'r') as zip_file:
+            zip_file.extractall(folder_path)
+
+
+def gather_index(files):
+    ticker_map = {}
+    company_map = {}
+
+    for file_path in files:
+        with open(file_path) as submission_file:
+            try:
+                submission = json.load(submission_file)
+                cik = submission['cik']
+                cik = '0' * (10 - len(cik)) + cik
+
+                company_map[submission['name']] = cik
+                ticker_map.update({ticker: cik for ticker in submission['tickers']})
+            except:
+                pass
+
+    return ticker_map, company_map
