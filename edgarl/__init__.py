@@ -60,7 +60,8 @@ class EDGAR:
 
         with open(summary_path, 'w+') as summary_file:
             summary = {
-                'build_timestamp': now.isoformat(),
+                'start': now.isoformat(),
+                'end': datetime.now().isoformat(),
                 'total_size': sum(d.stat().st_size for d in os.scandir(self.path) if d.is_file()),
                 'company_facts': {
                     # 'size': sum(d.stat().st_size for d in os.scandir(self._company_facts) if d.is_file()),
@@ -121,12 +122,14 @@ class Field:
 
 
 def process_zip(url, zip_path, folder_path):
+    print(url)
     with requests.get(url, headers=HEADERS, stream=True) as response:
         response.raise_for_status()
         with open(zip_path, 'wb+') as file:
             for chunk in response.iter_content(chunk_size=8192):
                 file.write(chunk)
 
+    print(zip_path)
     if len(os.listdir(folder_path)) <= 0:
         with ZipFile(zip_path, 'r') as zip_file:
             zip_file.extractall(folder_path)
@@ -145,6 +148,7 @@ def gather_index(files):
 
                 company_map[submission['name']] = cik
                 ticker_map.update({ticker: cik for ticker in submission['tickers']})
+                print(cik, end='\r')
             except:
                 pass
 
