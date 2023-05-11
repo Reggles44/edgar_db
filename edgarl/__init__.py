@@ -6,7 +6,7 @@ from datetime import datetime
 from zipfile import ZipFile
 
 
-__all__ = ['EDGAR', 'HEADERS']
+__all__ = ['EDGAR', 'CompanyFacts', 'Field', 'HEADERS']
 
 COMPANY_FACTS_URL = 'https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip'
 SUBMISSION_URL = 'https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip'
@@ -80,6 +80,44 @@ class EDGAR:
             return self._ticker_cik_map[ticker]
         if company_name and company_name in self._company_cik_map:
             return self._company_cik_map[company_name]
+
+    def get_data(self, cik=None, ticker=None, company_name=None):
+        if not cik:
+            cik = self.lookup_cik(ticker=ticker, company_name=company_name)
+
+        facts_path = os.path.join(self._company_facts, f'CIK{cik}.json')
+        if not cik or not os.path.isfile(facts_path):
+            raise ValueError('No valid cik, ticker, or company name supplied')
+
+        return CompanyFacts(json.load(open(facts_path)))
+
+
+class CompanyFacts:
+    def __init__(self, company_facts: dict):
+        self.__raw_facts = company_facts
+
+    def get(self, field_name: str):
+        for form, field_data in self.__raw_facts['facts'].items():
+            if field_name in field_data:
+                return Field(form, field_name, field_data[field_name])
+
+
+class Field:
+    def __init__(self, form, name, data):
+        self.form = form
+        self.name = name
+        self.data = data
+
+    @property
+    def label(self):
+        return self.data['label']
+
+    @property
+    def description(self):
+        return self.data['description']
+
+    def __iter__(self):
+        return ((item['fy'], item['fp'], item['val']) for item in self.data['units']['USD'])
 
 
 def process_zip(url, zip_path, folder_path):
