@@ -14,8 +14,8 @@ maintainers = [
   {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com" }
 ]
 
-[project.scripts]  # Optional
-build_edgar = "edgarl:build"
+[project.scripts]
+build_edgar = "edgarl.build"
 
 
 [build-system]
