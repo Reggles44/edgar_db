@@ -14,8 +14,15 @@ SUBMISSION_URL = 'https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submis
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 
+def build():
+    EDGAR(os.getcwd()).build()
+
+
 class EDGAR:
-    def __init__(self, path: str):
+    def __init__(self, path: str = None):
+        if not os.path.isdir(path):
+            raise ValueError('EDGAR needs a valid folder to store data')
+
         self.path = path
         self._company_facts = os.path.join(self.path, 'company_facts')
         self._submissions = os.path.join(self.path, 'submissions')
@@ -76,15 +83,8 @@ class EDGAR:
             }
             summary_file.write(json.dumps(summary, indent=4))
 
-    def lookup_cik(self, ticker=None, company_name=None):
-        if ticker and ticker in self._ticker_cik_map:
-            return self._ticker_cik_map[ticker]
-        if company_name and company_name in self._company_cik_map:
-            return self._company_cik_map[company_name]
-
-    def get_data(self, cik=None, ticker=None, company_name=None):
-        if not cik:
-            cik = self.lookup_cik(ticker=ticker, company_name=company_name)
+    def get_data(self, unique_id):
+        cik = self._ticker_cik_map.get(unique_id) or self._company_cik_map.get(unique_id) or unique_id
 
         facts_path = os.path.join(self._company_facts, f'CIK{cik}.json')
         if not cik or not os.path.isfile(facts_path):

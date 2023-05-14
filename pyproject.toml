@@ -1,0 +1,23 @@
+[project]
+name = "edgarl"
+version = "0.0.1"
+description = "A library for storing and accessing EDGAR data"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+
+authors = [
+  {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com" }
+]
+
+maintainers = [
+  {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com" }
+]
+
+[project.scripts]  # Optional
+build_edgar = "edgarl:build"
+
+
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
