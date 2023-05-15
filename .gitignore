@@ -1,4 +1,6 @@
 /resources/
 /venv/
 /.idea/
+/build/
 .python-version
+*.egg-info/

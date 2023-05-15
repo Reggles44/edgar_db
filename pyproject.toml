@@ -1,23 +1,31 @@
 [project]
-name = "edgarl"
+name = "edgar_db"
 version = "0.0.1"
-description = "A library for storing and accessing EDGAR data"
+description = "A library for storing and accessing EDGAR data localy"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE.txt"}
-
+keywords = ["edgar", "sec", "database"]
 authors = [
-  {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com" }
+  {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com"},
+]
+maintainers = [
+  {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com"},
 ]
 
-maintainers = [
-  {name = "Reginald Beakes", email = "reginaldbeakes@gmail.com" }
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python"
+]
+
+dependencies = [
+  "requests",
+]
+
+[project.optional-dependencies]
+cli =  [
+  "tqdm",
 ]
 
 [project.scripts]
-build_edgar = "edgarl.build"
-
-
-[build-system]
-requires = ["setuptools>=43.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+edgar_db_build = "edgar_db:build"
